@@ -95,13 +95,6 @@ class TrainManager:
 
         self.clip_grad_fun = build_gradient_clipper(config=train_config)
 
-
-        #change this to maml optimiser!!!
-
-        self.optimizer = build_optimizer(config=train_config,
-                                         parameters=model.parameters())
-
-
         # make edits to validation frequency???
 
         # validation & early stopping
@@ -232,6 +225,11 @@ class TrainManager:
                 reset_optimizer=train_config.get("reset_optimizer", False),
                 reset_iter_state=train_config.get("reset_iter_state", False))
 
+
+        self.meta_model = l2l.algorithms.MAML(self.model, lr=maml_lr)
+        self.opt = build_optimizer(config=train_config,
+                                         parameters=self.meta_model.parameters())
+        
         # multi-gpu training (should be after apex fp16 initialization)
         if self.n_gpu > 1:
             self.model = _DataParallel(self.model)
@@ -450,9 +448,6 @@ class TrainManager:
             self.batch_size * self.batch_multiplier)
 
 
-
-        meta_model = l2l.algorithms.MAML(self.model, lr=maml_lr)
-        opt = optim.Adam(meta_model.parameters(), lr=lr)
         loss_func = nn.NLLLoss(reduction='mean')
 
         train_gen = l2l.data.TaskDataset(train_data, 
@@ -482,7 +477,7 @@ class TrainManager:
             iteration_accuracy = 0.0
 
             for task in range (self.tasks_per_step):
-                learner = meta_model.clone()
+                learner = self.meta_model.clone()
                 train_task, valid_task = train_gen.sample(), valid_gen.sample()
 
                 # Fast Adaptation
@@ -498,14 +493,13 @@ class TrainManager:
             iteration_error /= self.tasks_per_step
             iteration_accuracy /= self.tasks_per_step
 
-            logger.info('Iteration: %3d: Loss : {:.3f} Acc : {:.3f}',(iteration+1),iteration_error, iteration_acc)
+            logger.info('Iteration: %3d: Loss : {:.3f} Acc : {:.3f}', (iteration+1),iteration_error, iteration_acc)
 
             #Meta Learning Step
-            opt.zero_grad()
+            self.opt.zero_grad()
             iteration_error.backward()
-            opt.step()
-
-        # log end of process??
+            self.opt.step()
+            
         # save and output checkpoint
 ##############TBC
 ######################################################################################
