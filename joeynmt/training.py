@@ -487,11 +487,11 @@ class TrainManager:
 
                 # Fast Adaptation
                 for step in range(self.adaptation_steps):
-                    train_error, _ = self.compute_loss(train_task, learner, loss_func, batch=self.batch_size)
+                    train_error, _ = self.compute_loss(train_task, learner, loss_func)
                     learner.adapt(train_error)
 
                 # Compute validation loss
-                valid_error, valid_acc = self.compute_loss(valid_task, learner, loss_func,batch=self.batch_size)
+                valid_error, valid_acc = self.compute_loss(valid_task, learner, loss_func)
                 iteration_error += valid_error
                 iteration_acc += valid_acc
 
