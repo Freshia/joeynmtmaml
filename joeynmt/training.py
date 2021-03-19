@@ -17,8 +17,12 @@ import numpy as np
 import torch
 from torch import Tensor
 from torch.utils.tensorboard import SummaryWriter
+from torch import nn, optim
 
 from torchtext.legacy.data import Dataset
+
+import learn2learn as l2l
+
 
 from joeynmt.model import build_model
 from joeynmt.batch import Batch
@@ -90,12 +94,20 @@ class TrainManager:
         self.learning_rate_min = train_config.get("learning_rate_min", 1.0e-8)
 
         self.clip_grad_fun = build_gradient_clipper(config=train_config)
+
+
+        #change this to maml optimiser!!!
+
         self.optimizer = build_optimizer(config=train_config,
                                          parameters=model.parameters())
+
+
+        # make edits to validation frequency???
 
         # validation & early stopping
         self.validation_freq = train_config.get("validation_freq", 1000)
         self.log_valid_sents = train_config.get("print_valid_sents", [0, 1, 2])
+
         self.ckpt_queue = collections.deque(
             maxlen=train_config.get("keep_last_ckpts", 5))
         self.eval_metric = train_config.get("eval_metric", "bleu")
@@ -107,6 +119,10 @@ class TrainManager:
                                      "'token_accuracy', 'sequence_accuracy'.")
         self.early_stopping_metric = train_config.get("early_stopping_metric",
                                                       "eval_metric")
+
+
+        #eliminate early stopping metric all together?? Not significant in MAML??
+
 
         # early_stopping_metric decides on how to find the early stopping point:
         # ckpts are written when there's a new high/low score for this metric.
@@ -150,8 +166,18 @@ class TrainManager:
             raise ConfigurationError("Invalid segmentation level. "
                                      "Valid options: 'word', 'bpe', 'char'.")
         self.shuffle = train_config.get("shuffle", True)
-        self.epochs = train_config["epochs"]
+        #self.epochs = train_config["epochs"]
         self.batch_size = train_config["batch_size"]
+
+        self.iterations = train_config["iterations"]
+        self.ways = train_config["ways"]
+        self.shots = train_config["shots"]
+        self.tasks_per_step = train_config["tasks_per_step"]
+        self.adaptation_steps = train_config["adaptation_steps"]    
+
+
+
+
         # Placeholder so that we can use the train_iter in other functions.
         self.train_iter = None
         self.train_iter_state = None
@@ -210,6 +236,8 @@ class TrainManager:
         if self.n_gpu > 1:
             self.model = _DataParallel(self.model)
 
+
+    #maintain this as final checkpoint from maml will be used as starting point for normal training
     def _save_checkpoint(self, new_best: bool = True) -> None:
         """
         Save the model's current parameters and the training state to a
@@ -349,6 +377,139 @@ class TrainManager:
     # pylint: disable=unnecessary-comprehension
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
+
+    def compute_loss(self,dataset,learner,loss_func):
+        # To be implemented!!!
+        loss = 0.0
+        accuracy = 0.0
+        self.train_iter = make_data_iter(dataset,
+                                         batch_size=self.batch_size,
+                                         batch_type=self.batch_type,
+                                         train=True,
+                                         shuffle=self.shuffle)
+
+        # if self.train_iter_state is not None:
+        #     self.train_iter.load_state_dict(self.train_iter_state)
+
+        # Go through torchtext iterator of dataset
+        return loss, accuracy
+
+    
+    def maml_train_and_validate(self, train_data: Dataset, valid_data: Dataset,lr=0.005, maml_lr=0.01):
+        """
+        Train the model (fast aaptation) and validate it.
+
+        :param train_data: training data
+        :param valid_data: validation data
+        """
+
+        #################################################################
+        # Simplified MAML logic:
+        #################################################################
+        # for iteration in range (iterations):
+        #     iter_error = 0.0
+        #     iter_acc = 0.0
+        #     for task in range (tasks_per_step):
+        #         #clone maml model
+        #         #sample train task and validation task
+
+        #         # Fast adapt
+        #         for step in range(adaptation_steps):
+        #             train_error = compute_loss(train_task)
+        #             learner.adapt(train_error)
+                
+        #         predictions = learner(valid_task)
+        #         valid_acc = compute_accuracy(valid_task)
+        #         valid_error = compute_loss(predictions,valid_labels)
+                
+        #         iter_error += valid_error
+        #         iter_acc += valid_acc
+
+        #     iteration_error /= tasks_per_step
+        #     iteration_acc /= tasks_per_step
+
+        #     # Take the meta-learning step
+        #     opt.zero_grad()
+        #     iteration_error.backward()
+        #     opt.step()
+            # where opt is our optimizer
+        # return checkpoint of original model
+        
+        #################################################################
+
+        logger.info(
+            "Train stats:\n"
+            "\tdevice: %s\n"
+            "\tn_gpu: %d\n"
+            "\t16-bits training: %r\n"
+            "\tgradient accumulation: %d\n"
+            "\tbatch size per device: %d\n"
+            "\ttotal batch size (w. parallel & accumulation): %d", self.device,
+            self.n_gpu, self.fp16, self.batch_multiplier, self.batch_size //
+            self.n_gpu if self.n_gpu > 1 else self.batch_size,
+            self.batch_size * self.batch_multiplier)
+
+
+
+        meta_model = l2l.algorithms.MAML(self.model, lr=maml_lr)
+        opt = optim.Adam(meta_model.parameters(), lr=lr)
+        loss_func = nn.NLLLoss(reduction='mean')
+
+        train_gen = l2l.data.TaskDataset(train_data, 
+                num_tasks=1000, 
+                task_transforms=[
+                    l2l.data.transforms.NWays(train_data, self.ways),
+                    l2l.data.transforms.KShots(train_data, self.shots),
+                    l2l.data.transforms.LoadData(train_data),
+                    l2l.data.transforms.RemapLabels(train_data)])
+
+        valid_gen = l2l.data.TaskDataset(valid_data, 
+                num_tasks=1000, 
+                task_transforms=[
+                    l2l.data.transforms.NWays(valid_data, self.ways),
+                    l2l.data.transforms.KShots(valid_data, self.shots),
+                    l2l.data.transforms.LoadData(valid_data),
+                    l2l.data.transforms.RemapLabels(valid_data)])
+
+        #edit config file to include iterations instead of epochs, include tasks_per_steps,adaptation_steps
+        #edit self.epoch parameter to be self.iteration
+
+        for iteration in range(self.iterations):
+            logger.info("Iteration %d", iteration + 1)
+
+            #scheduler??
+            iteration_error = 0.0
+            iteration_accuracy = 0.0
+
+            for task in range (self.tasks_per_step):
+                learner = meta_model.clone()
+                train_task, valid_task = train_gen.sample(), valid_gen.sample()
+
+                # Fast Adaptation
+                for step in range(self.adaptation_steps):
+                    train_error, _ = self.compute_loss(train_task, learner, loss_func, batch=self.batch_size)
+                    learner.adapt(train_error)
+
+                # Compute validation loss
+                valid_error, valid_acc = self.compute_loss(valid_task, learner, loss_func,batch=self.batch_size)
+                iteration_error += valid_error
+                iteration_acc += valid_acc
+
+            iteration_error /= self.tasks_per_step
+            iteration_accuracy /= self.tasks_per_step
+
+            logger.info('Iteration: %3d: Loss : {:.3f} Acc : {:.3f}',(iteration+1),iteration_error, iteration_acc)
+
+            #Meta Learning Step
+            opt.zero_grad()
+            iteration_error.backward()
+            opt.step()
+
+        # log end of process??
+        # save and output checkpoint
+##############TBC
+######################################################################################
+
     def train_and_validate(self, train_data: Dataset, valid_data: Dataset) \
             -> None:
         """
