@@ -3,7 +3,7 @@
 
 ## Goal and Purpose
 
-This code builds on [Joey NMT](https://https://github.com/joeynmt/joeynmt) to introduce Model Agnostic Meta-Learning for Machine Translation.
+This code builds on [Joey NMT](https://github.com/joeynmt/joeynmt) to introduce Model Agnostic Meta-Learning for Machine Translation.
 
 :koala: Joey NMT framework is developed for educational purposes.
 It aims to be a **clean** and **minimalistic** code base to help novices 
