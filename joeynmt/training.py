@@ -392,6 +392,35 @@ class TrainManager:
         # Go through torchtext iterator of dataset
         return loss, accuracy
 
+    def create_checkpoint(self, valid_acc,valid_loss):
+        #determine the checkpoint(based on early stopping metric and valid score)
+        #check if new best and save accordingly
+        #call save checkpoint
+
+        if self.early_stopping_metric == "loss":
+            ckpt_score = valid_loss
+        # elif self.early_stopping_metric in ["ppl", "perplexity"]:
+        #     ckpt_score = valid_ppl
+        else:
+            ckpt_score = valid_acc
+
+        if self.scheduler is not None \
+                and self.scheduler_step_at == "validation":
+            self.scheduler.step(ckpt_score)
+
+        new_best = False
+        if self.stats.is_best(ckpt_score):
+            self.stats.best_ckpt_score = ckpt_score
+            self.stats.best_ckpt_iter = self.stats.steps
+            logger.info('Hooray! New best validation result [%s]!',
+                        self.early_stopping_metric)
+            if self.ckpt_queue.maxlen > 0:
+                logger.info("Saving new checkpoint.")
+                new_best = True
+                self._save_checkpoint(new_best)
+        elif self.save_latest_checkpoint:
+            self._save_checkpoint(new_best)
+
     
     def maml_train_and_validate(self, train_data: Dataset, valid_data: Dataset,lr=0.005, maml_lr=0.01):
         """
@@ -447,7 +476,7 @@ class TrainManager:
             self.n_gpu if self.n_gpu > 1 else self.batch_size,
             self.batch_size * self.batch_multiplier)
 
-
+        # add normalization???
         loss_func = nn.NLLLoss(reduction='mean')
 
         train_gen = l2l.data.TaskDataset(train_data, 
@@ -465,9 +494,6 @@ class TrainManager:
                     l2l.data.transforms.KShots(valid_data, self.shots),
                     l2l.data.transforms.LoadData(valid_data),
                     l2l.data.transforms.RemapLabels(valid_data)])
-
-        #edit config file to include iterations instead of epochs, include tasks_per_steps,adaptation_steps
-        #edit self.epoch parameter to be self.iteration
 
         for iteration in range(self.iterations):
             logger.info("Iteration %d", iteration + 1)
@@ -499,7 +525,7 @@ class TrainManager:
             self.opt.zero_grad()
             iteration_error.backward()
             self.opt.step()
-            
+
         # save and output checkpoint
 ##############TBC
 ######################################################################################
