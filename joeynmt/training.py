@@ -403,7 +403,7 @@ class TrainManager:
 
             output = learner(x)
             curr_loss = loss_func(output, y)
-            accuracy += accuracy(output, y)
+            accuracy += self.accuracy(output,y)
             loss += curr_loss / len(dataset)
 
 
@@ -534,6 +534,7 @@ class TrainManager:
                 iteration_acc += valid_acc
 
                 #call create checkpoint
+                self.create_checkpoint(valid_acc,valid_loss)
 
             iteration_error /= self.tasks_per_step
             iteration_accuracy /= self.tasks_per_step
