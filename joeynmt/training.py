@@ -376,7 +376,7 @@ class TrainManager:
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
 
-    def accuracy(predictions, targets):
+    def accuracy(self,predictions, targets):
         predictions = predictions.argmax(dim=1)
         acc = (predictions == targets).sum().float()
         acc /= len(targets)
