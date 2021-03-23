@@ -376,6 +376,12 @@ class TrainManager:
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
 
+    def accuracy(predictions, targets):
+        predictions = predictions.argmax(dim=1)
+        acc = (predictions == targets).sum().float()
+        acc /= len(targets)
+        return acc.item()
+
     def compute_loss(self,dataset,learner,loss_func,device):
         # To be implemented!!!
         loss = 0.0
