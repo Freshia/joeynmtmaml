@@ -376,20 +376,31 @@ class TrainManager:
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
 
-    def compute_loss(self,dataset,learner,loss_func):
+    def compute_loss(self,dataset,learner,loss_func,device):
         # To be implemented!!!
         loss = 0.0
         accuracy = 0.0
         self.train_iter = make_data_iter(dataset,
                                          batch_size=self.batch_size,
                                          batch_type=self.batch_type,
-                                         train=True,
+                                         train=False,
                                          shuffle=self.shuffle)
 
         # if self.train_iter_state is not None:
         #     self.train_iter.load_state_dict(self.train_iter_state)
 
         # Go through torchtext iterator of dataset
+        for x, y in enumerate(iter(self.train_iter)):
+            
+            #preprocess x and y???
+            x, y = x.to(device), y.to(device)
+
+            output = learner(x)
+            curr_loss = loss_func(output, y)
+            accuracy += accuracy(output, y)
+            loss += curr_loss / len(dataset)
+
+
         return loss, accuracy
 
     def create_checkpoint(self, valid_acc,valid_loss):
@@ -515,6 +526,8 @@ class TrainManager:
                 valid_error, valid_acc = self.compute_loss(valid_task, learner, loss_func)
                 iteration_error += valid_error
                 iteration_acc += valid_acc
+
+                #call create checkpoint
 
             iteration_error /= self.tasks_per_step
             iteration_accuracy /= self.tasks_per_step
