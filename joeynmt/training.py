@@ -469,6 +469,7 @@ class TrainManager:
         #         iter_error += valid_error
         #         iter_acc += valid_acc
 
+        #          create_checkpoint
         #     iteration_error /= tasks_per_step
         #     iteration_acc /= tasks_per_step
 
@@ -478,7 +479,6 @@ class TrainManager:
         #     opt.step()
             # where opt is our optimizer
         # return checkpoint of original model
-        
         #################################################################
 
         logger.info(
@@ -525,21 +525,24 @@ class TrainManager:
 
                 # Fast Adaptation
                 for step in range(self.adaptation_steps):
-                    train_error, _ = self.compute_loss(train_task, learner, loss_func)
+                    train_error, _ = self.compute_loss(
+                        train_task, learner, loss_func)
                     learner.adapt(train_error)
 
                 # Compute validation loss
-                valid_error, valid_acc = self.compute_loss(valid_task, learner, loss_func)
+                valid_error, valid_acc = self.compute_loss(
+                    valid_task, learner, loss_func)
                 iteration_error += valid_error
                 iteration_acc += valid_acc
 
                 #call create checkpoint
-                self.create_checkpoint(valid_acc,valid_loss)
+                self.create_checkpoint(valid_acc,valid_error)
 
             iteration_error /= self.tasks_per_step
             iteration_accuracy /= self.tasks_per_step
 
-            logger.info('Iteration: %3d: Loss : {:.3f} Acc : {:.3f}', (iteration+1),iteration_error, iteration_acc)
+            logger.info('Iteration: %3d: Loss : {:.3f} Acc : {:.3f}', 
+                (iteration+1),iteration_error, iteration_acc)
 
             #Meta Learning Step
             self.opt.zero_grad()
