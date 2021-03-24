@@ -96,8 +96,7 @@ class TrainManager:
         # optimization
         self.learning_rate_min = train_config.get("learning_rate_min", 1.0e-8)
         self.optimizer = build_optimizer(config=train_config,
-                                         parameters=self.meta_model.parameters())
-        
+                    parameters=self.meta_model.parameters())
         self.clip_grad_fun = build_gradient_clipper(config=train_config)
 
         # make edits to validation frequency???
@@ -117,9 +116,6 @@ class TrainManager:
                                      "'token_accuracy', 'sequence_accuracy'.")
         self.early_stopping_metric = train_config.get("early_stopping_metric",
                                                       "eval_metric")
-
-
-        #eliminate early stopping metric all together?? Not significant in MAML??
 
 
         # early_stopping_metric decides on how to find the early stopping point:
@@ -171,8 +167,7 @@ class TrainManager:
         self.ways = train_config["ways"]
         self.shots = train_config["shots"]
         self.tasks_per_step = train_config["tasks_per_step"]
-        self.adaptation_steps = train_config["adaptation_steps"]    
-
+        self.adaptation_steps = train_config["adaptation_steps"]
 
 
 
@@ -230,14 +225,15 @@ class TrainManager:
                 reset_optimizer=train_config.get("reset_optimizer", False),
                 reset_iter_state=train_config.get("reset_iter_state", False))
 
-        
         # multi-gpu training (should be after apex fp16 initialization)
         if self.n_gpu > 1:
             self.model = _DataParallel(self.model)
 
 
-    #maintain this as final checkpoint from maml will be used as starting point for normal training
-    def _save_checkpoint(self, new_best: bool = True) -> None:
+    #maintain this as final checkpoint from maml 
+    #will be used as starting point for normal training
+    def _save_checkpoint(
+        self, new_best: bool = True) -> None:
         """
         Save the model's current parameters and the training state to a
         checkpoint.
@@ -397,8 +393,7 @@ class TrainManager:
         #     self.train_iter.load_state_dict(self.train_iter_state)
 
         # Go through torchtext iterator of dataset
-        for x, y in enumerate(iter(self.train_iter)):
-            
+        for x, y in enumerate(iter(self.train_iter)):         
             #preprocess x and y???
             x, y = x.to(device), y.to(device)
 
@@ -411,7 +406,8 @@ class TrainManager:
         return loss, accuracy
 
     def create_checkpoint(self, valid_acc,valid_loss):
-        #determine the checkpoint(based on early stopping metric and valid score)
+        #determine the checkpoint
+        # (based on early stopping metric and valid score)
         #check if new best and save accordingly
         #call save checkpoint
 
@@ -439,8 +435,7 @@ class TrainManager:
         elif self.save_latest_checkpoint:
             self._save_checkpoint(new_best)
 
-    
-    def maml_train_and_validate(self, train_data: Dataset, valid_data: Dataset,lr=0.005, maml_lr=0.01):
+    def maml_train_and_validate(self, train_data: Dataset, valid_data: Dataset):
         """
         Train the model (fast aaptation) and validate it.
 
@@ -462,14 +457,13 @@ class TrainManager:
         #         for step in range(adaptation_steps):
         #             train_error = compute_loss(train_task)
         #             learner.adapt(train_error)
-                
         #         predictions = learner(valid_task)
         #         valid_acc = compute_accuracy(valid_task)
         #         valid_error = compute_loss(predictions,valid_labels)
-                
+        #  
         #         iter_error += valid_error
         #         iter_acc += valid_acc
-
+        #
         #          create_checkpoint
         #     iteration_error /= tasks_per_step
         #     iteration_acc /= tasks_per_step
@@ -552,7 +546,7 @@ class TrainManager:
 
         # save and output checkpoint
 ##############TBC
-######################################################################################
+############################################################
 
     def train_and_validate(self, train_data: Dataset, valid_data: Dataset) \
             -> None:
