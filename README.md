@@ -6,17 +6,8 @@
 This code builds on [Joey NMT](https://github.com/joeynmt/joeynmt) to introduce Model Agnostic Meta-Learning for Machine Translation.
 
 :koala: Joey NMT framework is developed for educational purposes.
-It aims to be a **clean** and **minimalistic** code base to help novices 
-find fast answers to the following questions.
-- :grey_question: How to implement classic NMT architectures (RNN and Transformer) in PyTorch?
-- :grey_question: What are the building blocks of these architectures and how do they interact?
-- :grey_question: How to modify these blocks (e.g. deeper, wider, ...)?
-- :grey_question: How to modify the training procedure (e.g. add a regularizer)?
 
-
-However, Joey NMT re-implements baselines from major publications.
-
-Check out the detailed [documentation](https://joeynmt.readthedocs.io) for Joey NMT and our [paper](https://arxiv.org/abs/1907.12484).
+Check out the detailed [documentation](https://joeynmt.readthedocs.io) for Joey NMT and the [paper](https://arxiv.org/abs/1907.12484).
 
 ## Contributors
 Joey NMT was initially developed and is maintained by [Jasmijn Bastings](https://github.com/bastings) (University of Amsterdam) and [Julia Kreutzer](https://juliakreutzer.github.io/) (Heidelberg University), now both at Google Research. [Mayumi Ohta](https://www.cl.uni-heidelberg.de/statnlpgroup/members/ohta/) at Heidelberg University is continuing the legacy.
