@@ -92,7 +92,9 @@ class TrainManager:
 
         # optimization
         self.learning_rate_min = train_config.get("learning_rate_min", 1.0e-8)
-
+        self.optimizer = build_optimizer(config=train_config,
+                                         parameters=self.meta_model.parameters())
+        
         self.clip_grad_fun = build_gradient_clipper(config=train_config)
 
         # make edits to validation frequency???
@@ -227,8 +229,6 @@ class TrainManager:
 
 
         self.meta_model = l2l.algorithms.MAML(self.model, lr=maml_lr)
-        self.opt = build_optimizer(config=train_config,
-                                         parameters=self.meta_model.parameters())
         
         # multi-gpu training (should be after apex fp16 initialization)
         if self.n_gpu > 1:
@@ -1003,6 +1003,8 @@ def train(cfg_file: str) -> None:
     trg_vocab_file = "{}/trg_vocab.txt".format(cfg["training"]["model_dir"])
     trg_vocab.to_file(trg_vocab_file)
 
+
+    #change to maml train and validate
     # train the model
     trainer.train_and_validate(train_data=train_data, valid_data=dev_data)
 
