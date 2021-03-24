@@ -379,6 +379,7 @@ class TrainManager:
         acc /= len(targets)
         return acc.item()
 
+    #se validate on data??
     def compute_loss(self,dataset,learner,loss_func):
         # To be implemented!!!
         loss = 0.0
@@ -535,6 +536,14 @@ class TrainManager:
 
                 #call create checkpoint
                 self.create_checkpoint(valid_acc,valid_error)
+                
+                #Early stopping
+                if self.stats.stop:
+                    break
+            if self.stats.stop:
+                logger.info('Training ended since minimum lr %f was reached.',
+                            self.learning_rate_min)
+                break
 
             iteration_error /= self.tasks_per_step
             iteration_accuracy /= self.tasks_per_step
