@@ -80,6 +80,9 @@ class TrainManager:
         self.model = model
         self._log_parameters_list()
 
+        self.maml_lr = train_config["maml_lr"]
+        self.meta_model = l2l.algorithms.MAML(self.model, lr=self.maml_lr)
+
         # objective
         self.label_smoothing = train_config.get("label_smoothing", 0.0)
         self.model.loss_function = XentLoss(pad_index=self.model.pad_index,
@@ -227,8 +230,6 @@ class TrainManager:
                 reset_optimizer=train_config.get("reset_optimizer", False),
                 reset_iter_state=train_config.get("reset_iter_state", False))
 
-
-        self.meta_model = l2l.algorithms.MAML(self.model, lr=maml_lr)
         
         # multi-gpu training (should be after apex fp16 initialization)
         if self.n_gpu > 1:
