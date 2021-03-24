@@ -379,7 +379,7 @@ class TrainManager:
         acc /= len(targets)
         return acc.item()
 
-    def compute_loss(self,dataset,learner,loss_func,device):
+    def compute_loss(self,dataset,learner,loss_func):
         # To be implemented!!!
         loss = 0.0
         accuracy = 0.0
@@ -395,7 +395,7 @@ class TrainManager:
         # Go through torchtext iterator of dataset
         for x, y in enumerate(iter(self.train_iter)):         
             #preprocess x and y???
-            x, y = x.to(device), y.to(device)
+            x, y = x.to(self.device), y.to(self.device)
 
             output = learner(x)
             curr_loss = loss_func(output, y)
@@ -536,7 +536,7 @@ class TrainManager:
             iteration_error /= self.tasks_per_step
             iteration_accuracy /= self.tasks_per_step
 
-            logger.info('Iteration: %3d: Loss : {:.3f} Acc : {:.3f}', 
+            logger.info('Iteration: %d: Loss : {:.3f} Acc : {:.3f}', 
                 (iteration+1),iteration_error, iteration_acc)
 
             #Meta Learning Step
