@@ -402,7 +402,8 @@ class TrainManager:
             curr_loss = loss_func(output, y)
             accuracy += self.accuracy(output,y)
             loss += curr_loss / len(dataset)
-
+            
+        #find validation perplexity then call self._add_report
 
         return loss, accuracy
 
@@ -536,7 +537,7 @@ class TrainManager:
 
                 #call create checkpoint
                 self.create_checkpoint(valid_acc,valid_error)
-                
+
                 #Early stopping
                 if self.stats.stop:
                     break
