@@ -518,6 +518,9 @@ class TrainManager:
                 learner = self.meta_model.clone()
                 train_task, valid_task = train_gen.sample(), valid_gen.sample()
 
+                # increment step counter
+                self.stats.steps += 1
+
                 # Fast Adaptation
                 for step in range(self.adaptation_steps):
                     train_error, _ = self.compute_loss(
