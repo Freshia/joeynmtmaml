@@ -420,6 +420,7 @@ class TrainManager:
         else:
             ckpt_score = valid_acc
 
+        #Reduce Learning rate
         if self.scheduler is not None \
                 and self.scheduler_step_at == "validation":
             self.scheduler.step(ckpt_score)
@@ -511,7 +512,11 @@ class TrainManager:
         for iteration in range(self.iterations):
             logger.info("Iteration %d", iteration + 1)
 
-            #scheduler??
+            #Reduce learning rate
+
+            if self.scheduler is not None and self.scheduler_step_at == "iteration":
+                self.scheduler.step(epoch=iteration)
+
             iteration_error = 0.0
             iteration_accuracy = 0.0
 
@@ -528,6 +533,12 @@ class TrainManager:
                         train_task, learner, loss_func)
                     learner.adapt(train_error)
 
+
+                # decay lr
+                if self.scheduler is not None \
+                            and self.scheduler_step_at == "step":
+                        self.scheduler.step()
+                        
                 # Compute validation loss
                 valid_error, valid_acc = self.compute_loss(
                     valid_task, learner, loss_func)
