@@ -379,9 +379,8 @@ class TrainManager:
         acc /= len(targets)
         return acc.item()
 
-    #se validate on data??
+    #see prediction.py - validate on data??
     def compute_loss(self,dataset,learner,loss_func):
-        # To be implemented!!!
         loss = 0.0
         accuracy = 0.0
         self.train_iter = make_data_iter(dataset,
@@ -404,6 +403,7 @@ class TrainManager:
             loss += curr_loss / len(dataset)
             
         #find validation perplexity then call self._add_report
+        #_add_report will ensure early stopping can be achieved
 
         return loss, accuracy
 
@@ -475,7 +475,6 @@ class TrainManager:
         #     iteration_error.backward()
         #     opt.step()
             # where opt is our optimizer
-        # return checkpoint of original model
         #################################################################
 
         logger.info(
@@ -553,9 +552,9 @@ class TrainManager:
                 (iteration+1),iteration_error, iteration_acc)
 
             #Meta Learning Step
-            self.opt.zero_grad()
+            self.optimizer.zero_grad()
             iteration_error.backward()
-            self.opt.step()
+            self.optimizer.step()
 
         # save and output checkpoint
 ##############TBC
