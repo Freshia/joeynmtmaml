@@ -383,17 +383,17 @@ class TrainManager:
     def compute_loss(self,dataset,learner,loss_func):
         loss = 0.0
         accuracy = 0.0
-        self.train_iter = make_data_iter(dataset,
+        data_iter = make_data_iter(dataset,
                                          batch_size=self.batch_size,
                                          batch_type=self.batch_type,
-                                         train=False,
+                                         train=True,
                                          shuffle=self.shuffle)
 
         # if self.train_iter_state is not None:
         #     self.train_iter.load_state_dict(self.train_iter_state)
 
         # Go through torchtext iterator of dataset
-        for x, y in enumerate(iter(self.train_iter)):         
+        for x, y in enumerate(iter(data_iter)):         
             #preprocess x and y???
             x, y = x.to(self.device), y.to(self.device)
 
