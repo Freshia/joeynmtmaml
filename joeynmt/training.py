@@ -163,8 +163,8 @@ class TrainManager:
         self.batch_size = train_config["batch_size"]
 
         self.iterations = train_config["iterations"]
-        self.ways = train_config["ways"]
-        self.shots = train_config["shots"]
+        # self.ways = train_config["ways"]
+        # self.shots = train_config["shots"]
         self.tasks_per_step = train_config["tasks_per_step"]
         self.adaptation_steps = train_config["adaptation_steps"]
 
@@ -493,20 +493,10 @@ class TrainManager:
         loss_func = nn.NLLLoss(reduction='mean')
 
         train_gen = l2l.data.TaskDataset(train_data, 
-                num_tasks=1000, 
-                task_transforms=[
-                    l2l.data.transforms.NWays(train_data, self.ways),
-                    l2l.data.transforms.KShots(train_data, self.shots),
-                    l2l.data.transforms.LoadData(train_data),
-                    l2l.data.transforms.RemapLabels(train_data)])
+                num_tasks=1000)
 
         valid_gen = l2l.data.TaskDataset(valid_data, 
-                num_tasks=1000, 
-                task_transforms=[
-                    l2l.data.transforms.NWays(valid_data, self.ways),
-                    l2l.data.transforms.KShots(valid_data, self.shots),
-                    l2l.data.transforms.LoadData(valid_data),
-                    l2l.data.transforms.RemapLabels(valid_data)])
+                num_tasks=1000)
 
         for iteration in range(self.iterations):
             logger.info("Iteration %d", iteration + 1)
@@ -518,6 +508,8 @@ class TrainManager:
 
             iteration_error = 0.0
             iteration_accuracy = 0.0
+
+            total_valid_duration = 0
 
             for task in range (self.tasks_per_step):
                 learner = self.meta_model.clone()
@@ -697,9 +689,9 @@ class TrainManager:
                     batch_loss = 0  # rest batch_loss
 
                     # validate on the entire dev set
-                    if self.stats.steps % self.validation_freq == 0:
-                        valid_duration = self._validate(valid_data, epoch_no)
-                        total_valid_duration += valid_duration
+                    # if self.stats.steps % self.validation_freq == 0:
+                    #     valid_duration = self._validate(valid_data, epoch_no)
+                    #     total_valid_duration += valid_duration
 
                 if self.stats.stop:
                     break
