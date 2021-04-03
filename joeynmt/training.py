@@ -542,7 +542,7 @@ class TrainManager:
                     total_valid_duration += valid_duration
 
                 #call create checkpoint
-                self.create_checkpoint(valid_acc,valid_error)
+                #self.create_checkpoint(valid_acc,valid_error)
 
                 #Early stopping
                 if self.stats.stop:
@@ -555,8 +555,8 @@ class TrainManager:
             iteration_error /= self.tasks_per_step
             iteration_accuracy /= self.tasks_per_step
 
-            logger.info('Iteration: %d: Loss : {:.3f} Acc : {:.3f}', 
-                (iteration+1),iteration_error, iteration_acc)
+            # logger.info('Iteration: %d: Loss : {:.3f} Acc : {:.3f}', 
+            #     (iteration+1),iteration_error, iteration_acc)
 
             #Meta Learning Step
             self.optimizer.zero_grad()
@@ -567,148 +567,148 @@ class TrainManager:
 ##############TBC
 ############################################################
 
-    def train_and_validate(self, train_data: Dataset, valid_data: Dataset) \
-            -> None:
-        """
-        Train the model and validate it from time to time on the validation set.
+    # def train_and_validate(self, train_data: Dataset, valid_data: Dataset) \
+    #         -> None:
+    #     """
+    #     Train the model and validate it from time to time on the validation set.
 
-        :param train_data: training data
-        :param valid_data: validation data
-        """
-        self.train_iter = make_data_iter(train_data,
-                                         batch_size=self.batch_size,
-                                         batch_type=self.batch_type,
-                                         train=True,
-                                         shuffle=self.shuffle)
+    #     :param train_data: training data
+    #     :param valid_data: validation data
+    #     """
+    #     self.train_iter = make_data_iter(train_data,
+    #                                      batch_size=self.batch_size,
+    #                                      batch_type=self.batch_type,
+    #                                      train=True,
+    #                                      shuffle=self.shuffle)
 
-        if self.train_iter_state is not None:
-            self.train_iter.load_state_dict(self.train_iter_state)
+    #     if self.train_iter_state is not None:
+    #         self.train_iter.load_state_dict(self.train_iter_state)
 
-        #################################################################
-        # simplify accumulation logic:
-        #################################################################
-        # for epoch in range(epochs):
-        #     self.model.zero_grad()
-        #     epoch_loss = 0.0
-        #     batch_loss = 0.0
-        #     for i, batch in enumerate(iter(self.train_iter)):
-        #
-        #         # gradient accumulation:
-        #         # loss.backward() inside _train_step()
-        #         batch_loss += self._train_step(inputs)
-        #
-        #         if (i + 1) % self.batch_multiplier == 0:
-        #             self.optimizer.step()     # update!
-        #             self.model.zero_grad()    # reset gradients
-        #             self.steps += 1           # increment counter
-        #
-        #             epoch_loss += batch_loss  # accumulate batch loss
-        #             batch_loss = 0            # reset batch loss
-        #
-        #     # leftovers are just ignored.
-        #################################################################
+    #     #################################################################
+    #     # simplify accumulation logic:
+    #     #################################################################
+    #     # for epoch in range(epochs):
+    #     #     self.model.zero_grad()
+    #     #     epoch_loss = 0.0
+    #     #     batch_loss = 0.0
+    #     #     for i, batch in enumerate(iter(self.train_iter)):
+    #     #
+    #     #         # gradient accumulation:
+    #     #         # loss.backward() inside _train_step()
+    #     #         batch_loss += self._train_step(inputs)
+    #     #
+    #     #         if (i + 1) % self.batch_multiplier == 0:
+    #     #             self.optimizer.step()     # update!
+    #     #             self.model.zero_grad()    # reset gradients
+    #     #             self.steps += 1           # increment counter
+    #     #
+    #     #             epoch_loss += batch_loss  # accumulate batch loss
+    #     #             batch_loss = 0            # reset batch loss
+    #     #
+    #     #     # leftovers are just ignored.
+    #     #################################################################
 
-        logger.info(
-            "Train stats:\n"
-            "\tdevice: %s\n"
-            "\tn_gpu: %d\n"
-            "\t16-bits training: %r\n"
-            "\tgradient accumulation: %d\n"
-            "\tbatch size per device: %d\n"
-            "\ttotal batch size (w. parallel & accumulation): %d", self.device,
-            self.n_gpu, self.fp16, self.batch_multiplier, self.batch_size //
-            self.n_gpu if self.n_gpu > 1 else self.batch_size,
-            self.batch_size * self.batch_multiplier)
+    #     logger.info(
+    #         "Train stats:\n"
+    #         "\tdevice: %s\n"
+    #         "\tn_gpu: %d\n"
+    #         "\t16-bits training: %r\n"
+    #         "\tgradient accumulation: %d\n"
+    #         "\tbatch size per device: %d\n"
+    #         "\ttotal batch size (w. parallel & accumulation): %d", self.device,
+    #         self.n_gpu, self.fp16, self.batch_multiplier, self.batch_size //
+    #         self.n_gpu if self.n_gpu > 1 else self.batch_size,
+    #         self.batch_size * self.batch_multiplier)
 
-        for epoch_no in range(self.epochs):
-            logger.info("EPOCH %d", epoch_no + 1)
+    #     for epoch_no in range(self.epochs):
+    #         logger.info("EPOCH %d", epoch_no + 1)
 
-            if self.scheduler is not None and self.scheduler_step_at == "epoch":
-                self.scheduler.step(epoch=epoch_no)
+    #         if self.scheduler is not None and self.scheduler_step_at == "epoch":
+    #             self.scheduler.step(epoch=epoch_no)
 
-            self.model.train()
+    #         self.model.train()
 
-            # Reset statistics for each epoch.
-            start = time.time()
-            total_valid_duration = 0
-            start_tokens = self.stats.total_tokens
-            self.model.zero_grad()
-            epoch_loss = 0
-            batch_loss = 0
+    #         # Reset statistics for each epoch.
+    #         start = time.time()
+    #         total_valid_duration = 0
+    #         start_tokens = self.stats.total_tokens
+    #         self.model.zero_grad()
+    #         epoch_loss = 0
+    #         batch_loss = 0
 
-            for i, batch in enumerate(iter(self.train_iter)):
-                # create a Batch object from torchtext batch
-                batch = self.batch_class(batch, self.model.pad_index,
-                                         use_cuda=self.use_cuda)
+    #         for i, batch in enumerate(iter(self.train_iter)):
+    #             # create a Batch object from torchtext batch
+    #             batch = self.batch_class(batch, self.model.pad_index,
+    #                                      use_cuda=self.use_cuda)
 
-                # get batch loss
-                batch_loss += self._train_step(batch)
+    #             # get batch loss
+    #             batch_loss += self._train_step(batch)
 
-                # update!
-                if (i + 1) % self.batch_multiplier == 0:
-                    # clip gradients (in-place)
-                    if self.clip_grad_fun is not None:
-                        if self.fp16:
-                            self.clip_grad_fun(
-                                params=amp.master_params(self.optimizer))
-                        else:
-                            self.clip_grad_fun(params=self.model.parameters())
+    #             # update!
+    #             if (i + 1) % self.batch_multiplier == 0:
+    #                 # clip gradients (in-place)
+    #                 if self.clip_grad_fun is not None:
+    #                     if self.fp16:
+    #                         self.clip_grad_fun(
+    #                             params=amp.master_params(self.optimizer))
+    #                     else:
+    #                         self.clip_grad_fun(params=self.model.parameters())
 
-                    # make gradient step
-                    self.optimizer.step()
+    #                 # make gradient step
+    #                 self.optimizer.step()
 
-                    # decay lr
-                    if self.scheduler is not None \
-                            and self.scheduler_step_at == "step":
-                        self.scheduler.step()
+    #                 # decay lr
+    #                 if self.scheduler is not None \
+    #                         and self.scheduler_step_at == "step":
+    #                     self.scheduler.step()
 
-                    # reset gradients
-                    self.model.zero_grad()
+    #                 # reset gradients
+    #                 self.model.zero_grad()
 
-                    # increment step counter
-                    self.stats.steps += 1
+    #                 # increment step counter
+    #                 self.stats.steps += 1
 
-                    # log learning progress
-                    if self.stats.steps % self.logging_freq == 0:
-                        self.tb_writer.add_scalar("train/train_batch_loss",
-                                                  batch_loss, self.stats.steps)
-                        elapsed = time.time() - start - total_valid_duration
-                        elapsed_tokens = self.stats.total_tokens - start_tokens
-                        logger.info(
-                            "Epoch %3d, Step: %8d, Batch Loss: %12.6f, "
-                            "Tokens per Sec: %8.0f, Lr: %.6f", epoch_no + 1,
-                            self.stats.steps, batch_loss,
-                            elapsed_tokens / elapsed,
-                            self.optimizer.param_groups[0]["lr"])
-                        start = time.time()
-                        total_valid_duration = 0
-                        start_tokens = self.stats.total_tokens
+    #                 # log learning progress
+    #                 if self.stats.steps % self.logging_freq == 0:
+    #                     self.tb_writer.add_scalar("train/train_batch_loss",
+    #                                               batch_loss, self.stats.steps)
+    #                     elapsed = time.time() - start - total_valid_duration
+    #                     elapsed_tokens = self.stats.total_tokens - start_tokens
+    #                     logger.info(
+    #                         "Epoch %3d, Step: %8d, Batch Loss: %12.6f, "
+    #                         "Tokens per Sec: %8.0f, Lr: %.6f", epoch_no + 1,
+    #                         self.stats.steps, batch_loss,
+    #                         elapsed_tokens / elapsed,
+    #                         self.optimizer.param_groups[0]["lr"])
+    #                     start = time.time()
+    #                     total_valid_duration = 0
+    #                     start_tokens = self.stats.total_tokens
 
-                    # Only add complete loss of full mini-batch to epoch_loss
-                    epoch_loss += batch_loss  # accumulate epoch_loss
-                    batch_loss = 0  # rest batch_loss
+    #                 # Only add complete loss of full mini-batch to epoch_loss
+    #                 epoch_loss += batch_loss  # accumulate epoch_loss
+    #                 batch_loss = 0  # rest batch_loss
 
-                    # validate on the entire dev set
-                    # if self.stats.steps % self.validation_freq == 0:
-                    #     valid_duration = self._validate(valid_data, epoch_no)
-                    #     total_valid_duration += valid_duration
+    #                 # validate on the entire dev set
+    #                 # if self.stats.steps % self.validation_freq == 0:
+    #                 #     valid_duration = self._validate(valid_data, epoch_no)
+    #                 #     total_valid_duration += valid_duration
 
-                if self.stats.stop:
-                    break
-            if self.stats.stop:
-                logger.info('Training ended since minimum lr %f was reached.',
-                            self.learning_rate_min)
-                break
+    #             if self.stats.stop:
+    #                 break
+    #         if self.stats.stop:
+    #             logger.info('Training ended since minimum lr %f was reached.',
+    #                         self.learning_rate_min)
+    #             break
 
-            logger.info('Epoch %3d: total training loss %.2f', epoch_no + 1,
-                        epoch_loss)
-        else:
-            logger.info('Training ended after %3d epochs.', epoch_no + 1)
-        logger.info('Best validation result (greedy) at step %8d: %6.2f %s.',
-                    self.stats.best_ckpt_iter, self.stats.best_ckpt_score,
-                    self.early_stopping_metric)
+    #         logger.info('Epoch %3d: total training loss %.2f', epoch_no + 1,
+    #                     epoch_loss)
+    #     else:
+    #         logger.info('Training ended after %3d epochs.', epoch_no + 1)
+    #     logger.info('Best validation result (greedy) at step %8d: %6.2f %s.',
+    #                 self.stats.best_ckpt_iter, self.stats.best_ckpt_score,
+    #                 self.early_stopping_metric)
 
-        self.tb_writer.close()  # close Tensorboard writer
+    #     self.tb_writer.close()  # close Tensorboard writer
 
     def _train_step(self, batch: Batch) -> Tensor:
         """
@@ -764,7 +764,7 @@ class TrainManager:
         valid_score, valid_loss, valid_ppl, valid_sources, \
         valid_sources_raw, valid_references, valid_hypotheses, \
         valid_hypotheses_raw, valid_attention_scores = \
-            validate_on_data( model = model
+            validate_on_data( model = model,
                 batch_size=self.eval_batch_size,
                 batch_class=self.batch_class,
                 data=valid_data,
@@ -1020,7 +1020,8 @@ def train(cfg_file: str) -> None:
 
     #change to maml train and validate
     # train the model
-    trainer.train_and_validate(train_data=train_data, valid_data=dev_data)
+    # trainer.train_and_validate(train_data=train_data, valid_data=dev_data)
+    trainer.maml_train_and_validate(train_data=train_data, valid_data=dev_data)
 
     # predict with the best model on validation and test
     # (if test data is available)
