@@ -99,7 +99,6 @@ class TrainManager:
                     parameters=self.meta_model.parameters())
         self.clip_grad_fun = build_gradient_clipper(config=train_config)
 
-        # make edits to validation frequency???
 
         # validation & early stopping
         self.validation_freq = train_config.get("validation_freq", 1000)
@@ -539,11 +538,16 @@ class TrainManager:
                             and self.scheduler_step_at == "step":
                         self.scheduler.step()
                         
-                # Compute validation loss
-                valid_error, valid_acc = self.compute_loss(
-                    valid_task, learner, loss_func)
-                iteration_error += valid_error
-                iteration_acc += valid_acc
+                # # Compute validation loss
+                # valid_error, valid_acc = self.compute_loss(
+                #     valid_task, learner, loss_func)
+                # iteration_error += valid_error
+                # iteration_acc += valid_acc
+
+                # validate on the entire dev set
+                if self.stats.steps % self.validation_freq == 0:
+                    valid_duration = self._validate(valid_data, iteration, learner)
+                    total_valid_duration += valid_duration
 
                 #call create checkpoint
                 self.create_checkpoint(valid_acc,valid_error)
@@ -762,13 +766,13 @@ class TrainManager:
 
         return norm_batch_loss.item()
 
-    def _validate(self, valid_data, epoch_no):
+    def _validate(self, valid_data, epoch_no, model):
         valid_start_time = time.time()
 
         valid_score, valid_loss, valid_ppl, valid_sources, \
         valid_sources_raw, valid_references, valid_hypotheses, \
         valid_hypotheses_raw, valid_attention_scores = \
-            validate_on_data(
+            validate_on_data( model = model
                 batch_size=self.eval_batch_size,
                 batch_class=self.batch_class,
                 data=valid_data,
