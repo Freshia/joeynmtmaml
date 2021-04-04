@@ -492,11 +492,12 @@ class TrainManager:
         # add normalization???
         loss_func = nn.NLLLoss(reduction='mean')
 
-        train_gen = l2l.data.TaskDataset(train_data, 
-                num_tasks=1000)
+        train_dataset = l2l.data.MetaDataset(train_data)
+        valid_dataset = l2l.data.MetaDataset(valid_data)
 
-        valid_gen = l2l.data.TaskDataset(valid_data, 
-                num_tasks=1000)
+        train_gen = l2l.data.TaskDataset(train_dataset,num_tasks=1000)
+
+        valid_gen = l2l.data.TaskDataset(valid_dataset,num_tasks=1000)
 
         for iteration in range(self.iterations):
             logger.info("Iteration %d", iteration + 1)
