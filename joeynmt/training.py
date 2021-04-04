@@ -769,7 +769,7 @@ class TrainManager:
                 batch_class=self.batch_class,
                 data=valid_data,
                 eval_metric=self.eval_metric,
-                level=self.level, model=self.model,
+                level=self.level,
                 use_cuda=self.use_cuda,
                 max_output_length=self.max_output_length,
                 compute_loss=True,
