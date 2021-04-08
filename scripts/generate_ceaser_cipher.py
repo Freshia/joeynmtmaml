@@ -4,7 +4,7 @@ import numpy as np
 
 np.random.seed(42)
 
-def generate_samples(n=10, maxlen=10):
+def generate_samples(n=10000, maxlen=10):
     #generate random string made up of lowercase letters
     samples = []
     for i in range(n):
