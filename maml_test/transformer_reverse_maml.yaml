@@ -3,9 +3,9 @@ name: "maml_experiment"
 data:
     src: "src"
     trg: "trg"
-    train: "maml_test/train"
-    dev: "maml_test/dev"
-    test: "maml_test/test"
+    train: "joeynmtmaml/maml_test/train"
+    dev: "joeynmtmaml/maml_test/dev"
+    test: "joeynmtmaml/maml_test/test"
     level: "word"
     lowercase: False
     max_sent_length: 25
