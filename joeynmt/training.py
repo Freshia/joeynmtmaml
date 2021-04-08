@@ -439,7 +439,7 @@ class TrainManager:
 
     def maml_train_and_validate(self, train_data: Dataset, valid_data: Dataset):
         """
-        Train the model (fast aaptation) and validate it.
+        Train the model (fast adaptation) and validate it.
 
         :param train_data: training data
         :param valid_data: validation data
