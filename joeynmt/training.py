@@ -379,31 +379,21 @@ class TrainManager:
         return acc.item()
 
     #see prediction.py - validate on data??
-    def compute_loss(self,dataset,learner,loss_func):
+    def compute_loss(self,batch,learner,loss_func):
         loss = 0.0
         accuracy = 0.0
-        data_iter = make_data_iter(dataset,
-                                         batch_size=self.batch_size,
-                                         batch_type=self.batch_type,
-                                         train=True,
-                                         shuffle=self.shuffle)
 
-        # if self.train_iter_state is not None:
-        #     self.train_iter.load_state_dict(self.train_iter_state)
+        print("Src")
+        print(batch.src[0])
+        print("trg")
+        print(batch.trg[0])
+        x,y = batch.src,batch.trg
+        x, y = x.to(self.device), y.to(self.device)
 
-        # Go through torchtext iterator of dataset
-        for x, y in enumerate(iter(data_iter)):         
-            #preprocess x and y???
-            x, y = x.to(self.device), y.to(self.device)
-
-            output = learner(x)
-            curr_loss = loss_func(output, y)
-            accuracy += self.accuracy(output,y)
-            loss += curr_loss / len(dataset)
-            
-        #find validation perplexity then call self._add_report
-        #_add_report will ensure early stopping can be achieved
-
+        output = learner(x)
+        curr_loss = loss_func(output, y)
+        accuracy += self.accuracy(output,y)
+        loss += curr_loss / len(batch)
         return loss, accuracy
 
     def create_checkpoint(self, valid_acc,valid_loss):
@@ -492,12 +482,20 @@ class TrainManager:
         # add normalization???
         loss_func = nn.NLLLoss(reduction='mean')
 
-        train_dataset = l2l.data.MetaDataset(train_data)
-        valid_dataset = l2l.data.MetaDataset(valid_data)
+        # train_dataset = l2l.data.MetaDataset(train_data)
+        # valid_dataset = l2l.data.MetaDataset(valid_data)
 
-        train_gen = l2l.data.TaskDataset(train_dataset,num_tasks=1000)
+        # train_gen = l2l.data.TaskDataset(train_dataset,num_tasks=1000)
 
-        valid_gen = l2l.data.TaskDataset(valid_dataset,num_tasks=1000)
+        # valid_gen = l2l.data.TaskDataset(valid_dataset,num_tasks=1000)
+        self.train_iter = make_data_iter(train_data,
+                                         batch_size=self.batch_size,
+                                         batch_type=self.batch_type,
+                                         train=True,
+                                         shuffle=self.shuffle)
+
+        if self.train_iter_state is not None:
+            self.train_iter.load_state_dict(self.train_iter_state)
 
         for iteration in range(self.iterations):
             logger.info("Iteration %d", iteration + 1)
@@ -512,9 +510,14 @@ class TrainManager:
 
             total_valid_duration = 0
 
-            for task in range (self.tasks_per_step):
+            # for task in range (self.tasks_per_step):
+            #     learner = self.meta_model.clone()
+            #     train_task, valid_task = train_gen.sample(), valid_gen.sample()
+            for i, batch in enumerate(iter(self.train_iter)):
+               # create a Batch object from torchtext batch
                 learner = self.meta_model.clone()
-                train_task, valid_task = train_gen.sample(), valid_gen.sample()
+                train_batch = self.batch_class(batch, self.model.pad_index,
+                                      use_cuda=self.use_cuda)
 
                 # increment step counter
                 self.stats.steps += 1
@@ -522,7 +525,7 @@ class TrainManager:
                 # Fast Adaptation
                 for step in range(self.adaptation_steps):
                     train_error, _ = self.compute_loss(
-                        train_task, learner, loss_func)
+                        train_batch, learner, loss_func)
                     learner.adapt(train_error)
 
 
