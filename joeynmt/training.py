@@ -382,19 +382,14 @@ class TrainManager:
     def compute_loss(self,batch,learner,loss_func):
         loss = 0.0
         accuracy = 0.0
+        
+        # x,y = batch.src,batch.trg
+        # x, y = x.to(self.device), y.to(self.device)
 
-        print("Src")
-        print(batch.src[0])
-        print("trg")
-        print(batch.trg[0])
-        x,y = batch.src,batch.trg
-        x, y = x.to(self.device), y.to(self.device)
-
-        output = learner(x)
-        curr_loss = loss_func(output, y)
-        accuracy += self.accuracy(output,y)
-        loss += curr_loss / len(batch)
-        return loss, accuracy
+        batch_loss, _, _, _ = learner(return_type="loss", **vars(batch))
+        print("Batch loss")
+        print(batch_loss)
+        return batch_loss
 
     def create_checkpoint(self, valid_acc,valid_loss):
         #determine the checkpoint
