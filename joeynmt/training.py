@@ -382,7 +382,7 @@ class TrainManager:
     def compute_loss(self,batch,learner,loss_func):
         loss = 0.0
         accuracy = 0.0
-        
+
         # x,y = batch.src,batch.trg
         # x, y = x.to(self.device), y.to(self.device)
 
@@ -521,7 +521,7 @@ class TrainManager:
                 for step in range(self.adaptation_steps):
                     train_error, _ = self.compute_loss(
                         train_batch, learner, loss_func)
-                    learner.adapt(train_error)
+                    learner.adapt(train_error,allow_nograd=True,allow_unused=True)
 
 
                 # decay lr
