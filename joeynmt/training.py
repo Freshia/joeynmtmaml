@@ -519,7 +519,7 @@ class TrainManager:
 
                 # Fast Adaptation
                 for step in range(self.adaptation_steps):
-                    train_error, _ = self.compute_loss(
+                    train_error= self.compute_loss(
                         train_batch, learner, loss_func)
                     learner.adapt(train_error,allow_nograd=True,allow_unused=True)
 
@@ -534,12 +534,15 @@ class TrainManager:
                 #     valid_task, learner, loss_func)
                 # iteration_error += valid_error
                 # iteration_acc += valid_acc
-
+                valid_loss = 0.0
                 # validate on the entire dev set
                 if self.stats.steps % self.validation_freq == 0:
-                    valid_duration = self._validate(valid_data, iteration, learner)
+                    valid_loss, valid_duration = self._validate(valid_data, iteration, learner)
                     total_valid_duration += valid_duration
+                
 
+                iteration_error += valid_loss
+                
                 #call create checkpoint
                 #self.create_checkpoint(valid_acc,valid_error)
 
@@ -552,7 +555,6 @@ class TrainManager:
                 break
 
             iteration_error /= self.tasks_per_step
-            iteration_accuracy /= self.tasks_per_step
 
             # logger.info('Iteration: %d: Loss : {:.3f} Acc : {:.3f}', 
             #     (iteration+1),iteration_error, iteration_acc)
@@ -845,7 +847,7 @@ class TrainManager:
                                   tb_writer=self.tb_writer,
                                   steps=self.stats.steps)
 
-        return valid_duration
+        return valid_loss, valid_duration
 
     def _add_report(self,
                     valid_score: float,
