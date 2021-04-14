@@ -92,90 +92,90 @@ def validate_on_data(model: Model, data: Dataset,
     # disable dropout
     model.eval()
     # don't track gradients during validation
-    with torch.no_grad():
-        all_outputs = []
-        valid_attention_scores = []
-        total_loss = 0
-        total_ntokens = 0
-        total_nseqs = 0
-        for valid_batch in iter(valid_iter):
-            # run as during training to get validation loss (e.g. xent)
+    #with torch.no_grad():
+    all_outputs = []
+    valid_attention_scores = []
+    total_loss = 0
+    total_ntokens = 0
+    total_nseqs = 0
+    for valid_batch in iter(valid_iter):
+        # run as during training to get validation loss (e.g. xent)
 
-            batch = batch_class(valid_batch, pad_index, use_cuda=use_cuda)
-            # sort batch now by src length and keep track of order
-            sort_reverse_index = batch.sort_by_src_length()
+        batch = batch_class(valid_batch, pad_index, use_cuda=use_cuda)
+        # sort batch now by src length and keep track of order
+        sort_reverse_index = batch.sort_by_src_length()
 
-            # run as during training with teacher forcing
-            if compute_loss and batch.trg is not None:
-                batch_loss, _, _, _ = model(return_type="loss", **vars(batch))
-                if n_gpu > 1:
-                    batch_loss = batch_loss.mean() # average on multi-gpu
-                total_loss += batch_loss
-                total_ntokens += batch.ntokens
-                total_nseqs += batch.nseqs
+        # run as during training with teacher forcing
+        if compute_loss and batch.trg is not None:
+            batch_loss, _, _, _ = model(return_type="loss", **vars(batch))
+            if n_gpu > 1:
+                batch_loss = batch_loss.mean() # average on multi-gpu
+            total_loss += batch_loss
+            total_ntokens += batch.ntokens
+            total_nseqs += batch.nseqs
 
-            # run as during inference to produce translations
-            output, attention_scores = run_batch(
-                model=model, batch=batch, beam_size=beam_size,
-                beam_alpha=beam_alpha, max_output_length=max_output_length)
+        # run as during inference to produce translations
+        output, attention_scores = run_batch(
+            model=model, batch=batch, beam_size=beam_size,
+            beam_alpha=beam_alpha, max_output_length=max_output_length)
 
-            # sort outputs back to original order
-            all_outputs.extend(output[sort_reverse_index])
-            valid_attention_scores.extend(
-                attention_scores[sort_reverse_index]
-                if attention_scores is not None else [])
+        # sort outputs back to original order
+        all_outputs.extend(output[sort_reverse_index])
+        valid_attention_scores.extend(
+            attention_scores[sort_reverse_index]
+            if attention_scores is not None else [])
 
-        assert len(all_outputs) == len(data)
+    assert len(all_outputs) == len(data)
 
-        if compute_loss and total_ntokens > 0:
-            # total validation loss
-            valid_loss = total_loss
-            # exponent of token-level negative log prob
-            valid_ppl = torch.exp(total_loss / total_ntokens)
-        else:
-            valid_loss = -1
-            valid_ppl = -1
+    if compute_loss and total_ntokens > 0:
+        # total validation loss
+        valid_loss = total_loss
+        # exponent of token-level negative log prob
+        valid_ppl = torch.exp(total_loss / total_ntokens)
+    else:
+        valid_loss = -1
+        valid_ppl = -1
 
-        # decode back to symbols
-        decoded_valid = model.trg_vocab.arrays_to_sentences(arrays=all_outputs,
-                                                            cut_at_eos=True)
+    # decode back to symbols
+    decoded_valid = model.trg_vocab.arrays_to_sentences(arrays=all_outputs,
+                                                        cut_at_eos=True)
 
-        # evaluate with metric on full dataset
-        join_char = " " if level in ["word", "bpe"] else ""
-        valid_sources = [join_char.join(s) for s in data.src]
-        valid_references = [join_char.join(t) for t in data.trg]
-        valid_hypotheses = [join_char.join(t) for t in decoded_valid]
+    # evaluate with metric on full dataset
+    join_char = " " if level in ["word", "bpe"] else ""
+    valid_sources = [join_char.join(s) for s in data.src]
+    valid_references = [join_char.join(t) for t in data.trg]
+    valid_hypotheses = [join_char.join(t) for t in decoded_valid]
 
-        # post-process
-        if level == "bpe" and postprocess:
-            valid_sources = [bpe_postprocess(s, bpe_type=bpe_type)
-                             for s in valid_sources]
-            valid_references = [bpe_postprocess(v, bpe_type=bpe_type)
-                                for v in valid_references]
-            valid_hypotheses = [bpe_postprocess(v, bpe_type=bpe_type)
-                                for v in valid_hypotheses]
+    # post-process
+    if level == "bpe" and postprocess:
+        valid_sources = [bpe_postprocess(s, bpe_type=bpe_type)
+                            for s in valid_sources]
+        valid_references = [bpe_postprocess(v, bpe_type=bpe_type)
+                            for v in valid_references]
+        valid_hypotheses = [bpe_postprocess(v, bpe_type=bpe_type)
+                            for v in valid_hypotheses]
 
-        # if references are given, evaluate against them
-        if valid_references:
-            assert len(valid_hypotheses) == len(valid_references)
+    # if references are given, evaluate against them
+    if valid_references:
+        assert len(valid_hypotheses) == len(valid_references)
 
-            current_valid_score = 0
-            if eval_metric.lower() == 'bleu':
-                # this version does not use any tokenization
-                current_valid_score = bleu(
-                    valid_hypotheses, valid_references,
-                    tokenize=sacrebleu["tokenize"])
-            elif eval_metric.lower() == 'chrf':
-                current_valid_score = chrf(valid_hypotheses, valid_references,
-                    remove_whitespace=sacrebleu["remove_whitespace"])
-            elif eval_metric.lower() == 'token_accuracy':
-                current_valid_score = token_accuracy(   # supply List[List[str]]
-                    list(decoded_valid), list(data.trg))
-            elif eval_metric.lower() == 'sequence_accuracy':
-                current_valid_score = sequence_accuracy(
-                    valid_hypotheses, valid_references)
-        else:
-            current_valid_score = -1
+        current_valid_score = 0
+        if eval_metric.lower() == 'bleu':
+            # this version does not use any tokenization
+            current_valid_score = bleu(
+                valid_hypotheses, valid_references,
+                tokenize=sacrebleu["tokenize"])
+        elif eval_metric.lower() == 'chrf':
+            current_valid_score = chrf(valid_hypotheses, valid_references,
+                remove_whitespace=sacrebleu["remove_whitespace"])
+        elif eval_metric.lower() == 'token_accuracy':
+            current_valid_score = token_accuracy(   # supply List[List[str]]
+                list(decoded_valid), list(data.trg))
+        elif eval_metric.lower() == 'sequence_accuracy':
+            current_valid_score = sequence_accuracy(
+                valid_hypotheses, valid_references)
+    else:
+        current_valid_score = -1
 
     return current_valid_score, valid_loss, valid_ppl, valid_sources, \
         valid_sources_raw, valid_references, valid_hypotheses, \
