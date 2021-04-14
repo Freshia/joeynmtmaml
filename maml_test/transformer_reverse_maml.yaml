@@ -27,7 +27,7 @@ training:
     learning_rate: 0.0002
     learning_rate_min: 0.00000001
     maml_lr: 0.01
-    label_smoothing: 0.1
+    label_smoothing: 0.0
     weight_decay: 0.0
     batch_size: 250
     batch_type: "token"
