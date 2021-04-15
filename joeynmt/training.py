@@ -388,37 +388,6 @@ class TrainManager:
         print(batch_loss)
         return batch_loss
 
-    def create_checkpoint(self, valid_acc,valid_loss):
-        #determine the checkpoint
-        # (based on early stopping metric and valid score)
-        #check if new best and save accordingly
-        #call save checkpoint
-
-        if self.early_stopping_metric == "loss":
-            ckpt_score = valid_loss
-        # elif self.early_stopping_metric in ["ppl", "perplexity"]:
-        #     ckpt_score = valid_ppl
-        else:
-            ckpt_score = valid_acc
-
-        #Reduce Learning rate
-        if self.scheduler is not None \
-                and self.scheduler_step_at == "validation":
-            self.scheduler.step(ckpt_score)
-
-        new_best = False
-        if self.stats.is_best(ckpt_score):
-            self.stats.best_ckpt_score = ckpt_score
-            self.stats.best_ckpt_iter = self.stats.steps
-            logger.info('Hooray! New best validation result [%s]!',
-                        self.early_stopping_metric)
-            if self.ckpt_queue.maxlen > 0:
-                logger.info("Saving new checkpoint.")
-                new_best = True
-                self._save_checkpoint(new_best)
-        elif self.save_latest_checkpoint:
-            self._save_checkpoint(new_best)
-
     def maml_train_and_validate(self, train_data: Dataset, valid_data: Dataset):
         """
         Train the model (fast adaptation) and validate it.
