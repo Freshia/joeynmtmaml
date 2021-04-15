@@ -371,13 +371,7 @@ class TrainManager:
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
 
-    def accuracy(self,predictions, targets):
-        predictions = predictions.argmax(dim=1)
-        acc = (predictions == targets).sum().float()
-        acc /= len(targets)
-        return acc.item()
 
-    #see prediction.py - validate on data??
     def compute_loss(self,batch,learner):
 
         # x,y = batch.src,batch.trg
