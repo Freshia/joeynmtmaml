@@ -454,13 +454,13 @@ class TrainManager:
                 self.scheduler.step(epoch=iteration)
 
             iteration_error = 0.0
-            iteration_accuracy = 0.0
 
             total_valid_duration = 0
 
             for i, batch in enumerate(iter(self.train_iter)):
                # create a Batch object from torchtext batch
                 learner = self.meta_model.clone()
+                learner.train()
                 train_batch = self.batch_class(batch, self.model.pad_index,
                                       use_cuda=self.use_cuda)
 
@@ -490,7 +490,7 @@ class TrainManager:
                     valid_loss, valid_duration = self._validate(valid_data, iteration, learner)
                     total_valid_duration += valid_duration
                 
-                iteration_error += valid_loss   
+                iteration_error += valid_loss
 
                 #Early stopping
                 if self.stats.stop:
