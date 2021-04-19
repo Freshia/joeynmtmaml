@@ -12,12 +12,14 @@ import os
 import sys
 import collections
 import pathlib
+import random
 import numpy as np
 
 import torch
 from torch import Tensor
 from torch.utils.tensorboard import SummaryWriter
 from torch import nn, optim
+import torch.utils.data
 
 from torchtext.legacy.data import Dataset
 
@@ -163,8 +165,9 @@ class TrainManager:
         self.batch_size = train_config["batch_size"]
 
         self.iterations = train_config["iterations"]
+        self.tasks = train_config["tasks"]
 
-        self.tasks_per_step = train_config["tasks_per_step"]
+        self.task_size= train_config["task_size"]
         self.adaptation_steps = train_config["adaptation_steps"]
 
 
@@ -370,17 +373,37 @@ class TrainManager:
     # pylint: disable=unnecessary-comprehension
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
+    def sample_task(self, dataset, size):
+        #return subset of batch of size n
+        indices  = []
+        for x in range (size):
+            indices.append(random.randint(0, len(dataset)))
 
-
-    def compute_loss(self,batch,learner):
+        subset = torch.utils.data.Subset(dataset, indices)
+        return subset
+    def compute_loss(self,train_task,learner):
 
         # x,y = batch.src,batch.trg
         # x, y = x.to(self.device), y.to(self.device)
-
-        batch_loss, _, _, _ = learner(return_type="loss", **vars(batch))
-        print("Batch loss")
-        print(batch_loss)
-        return batch_loss
+        loss = 0.0
+        task_train_iter = make_data_iter(train_task,
+                                         batch_size=self.batch_size,
+                                         batch_type=self.batch_type,
+                                         train=True,
+                                         shuffle=self.shuffle)
+        
+        for i, batch in enumerate(iter(task_train_iter)):
+            train_batch = self.batch_class(batch, self.model.pad_index,
+                                      use_cuda=self.use_cuda)
+                        
+            batch_loss, _, _, _ = learner(return_type="loss", **vars(train_batch))
+            loss += batch_loss
+            print("Batch loss")
+            print(batch_loss)
+        loss /= len(train_task)
+        print("Loss")
+        print(loss)
+        return loss
 
     def maml_train_and_validate(self, train_data: Dataset, valid_data: Dataset):
         """
@@ -436,14 +459,14 @@ class TrainManager:
 
         # add normalization???
 
-        self.train_iter = make_data_iter(train_data,
-                                         batch_size=self.batch_size,
-                                         batch_type=self.batch_type,
-                                         train=True,
-                                         shuffle=self.shuffle)
+        # self.train_iter = make_data_iter(train_data,
+        #                                  batch_size=self.batch_size,
+        #                                  batch_type=self.batch_type,
+        #                                  train=True,
+        #                                  shuffle=self.shuffle)
 
-        if self.train_iter_state is not None:
-            self.train_iter.load_state_dict(self.train_iter_state)
+        # if self.train_iter_state is not None:
+        #     self.train_iter.load_state_dict(self.train_iter_state)
 
         for iteration in range(self.iterations):
             logger.info("Iteration %d", iteration + 1)
@@ -455,42 +478,40 @@ class TrainManager:
 
             iteration_error = 0.0
 
-            total_valid_duration = 0
-
-            for i, batch in enumerate(iter(self.train_iter)):
+            #total_valid_duration = 0
+            for task in range(self.tasks):
                # create a Batch object from torchtext batch
                 learner = self.meta_model.clone()
                 learner.train()
-                train_batch = self.batch_class(batch, self.model.pad_index,
-                                      use_cuda=self.use_cuda)
-
+                train_task = self.sample_task(train_data,self.task_size)
+                valid_task = self.sample_task(valid_data,self.task_size)
                 # increment step counter
                 self.stats.steps += 1
 
                 # Fast Adaptation
                 for step in range(self.adaptation_steps):
                     train_error= self.compute_loss(
-                        train_batch, learner)
+                        train_task, learner)
                     learner.adapt(train_error,allow_nograd=True,allow_unused=True)
-
 
                 # decay lr
                 if self.scheduler is not None \
                             and self.scheduler_step_at == "step":
                         self.scheduler.step()
-                        
-                # # Compute validation loss
-                # valid_error, valid_acc = self.compute_loss(
-                #     valid_task, learner)
-                # iteration_error += valid_error
-                # iteration_acc += valid_acc
+
                 valid_loss = 0.0
-                # validate on the entire dev set
-                if self.stats.steps % self.validation_freq == 0:
-                    valid_loss, valid_duration = self._validate(valid_data, iteration, learner)
-                    total_valid_duration += valid_duration
-                
+
+                print("Validation......")       
+                # # Compute validation loss
+                valid_loss = self.compute_loss(
+                    valid_task, learner)
+                print("Valid loss", valid_loss)
                 iteration_error += valid_loss
+
+                # validate on the entire dev set
+                # if self.stats.steps % self.validation_freq == 0:
+                #     valid_loss, valid_duration = self._validate(valid_data, iteration, learner)
+                #     total_valid_duration += valid_duration
 
                 #Early stopping
                 if self.stats.stop:
