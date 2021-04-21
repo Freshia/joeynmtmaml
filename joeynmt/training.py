@@ -373,14 +373,21 @@ class TrainManager:
     # pylint: disable=unnecessary-comprehension
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
-    def sample_task(self, dataset, size):
-        #return subset of batch of size n
-        indices  = []
-        for x in range (size):
-            indices.append(random.randint(0, len(dataset)))
+    def sample_task(self, dataset, number):
+        split_val = 1.0/3
+        tasks_ratio = [split_val]*3
+        train_subsets = []
+        train_subsets.append(dataset)
+        while number>1:
+            subs = train_subsets
+            train_subsets = []
+            length = len(subs)
+            for x in range (length):
+                data = subs[x]
+                train_subsets.extend(data.split(split_ratio = tasks_ratio))
+            number=number/3
 
-        subset = torch.utils.data.Subset(dataset, indices)
-        return subset
+        return train_subsets
     def compute_loss(self,train_task,learner):
 
         # x,y = batch.src,batch.trg
@@ -391,11 +398,9 @@ class TrainManager:
                                          batch_type=self.batch_type,
                                          train=True,
                                          shuffle=self.shuffle)
-        
         for i, batch in enumerate(iter(task_train_iter)):
             train_batch = self.batch_class(batch, self.model.pad_index,
-                                      use_cuda=self.use_cuda)
-                        
+                                      use_cuda=self.use_cuda)                    
             batch_loss, _, _, _ = learner(return_type="loss", **vars(train_batch))
             loss += batch_loss
             print("Batch loss")
@@ -467,6 +472,9 @@ class TrainManager:
 
         # if self.train_iter_state is not None:
         #     self.train_iter.load_state_dict(self.train_iter_state)
+        train_subsets = self.sample_task(train_data,9)
+        valid_subsets = self.sample_task(valid_data,9)
+        length = len(train_subsets)
 
         for iteration in range(self.iterations):
             logger.info("Iteration %d", iteration + 1)
@@ -477,21 +485,17 @@ class TrainManager:
                 self.scheduler.step(epoch=iteration)
 
             iteration_error = 0.0
-
             #total_valid_duration = 0
-            for task in range(self.tasks):
-               # create a Batch object from torchtext batch
+            for x in range(length):
                 learner = self.meta_model.clone()
                 learner.train()
-                train_task = self.sample_task(train_data,self.task_size)
-                valid_task = self.sample_task(valid_data,self.task_size)
                 # increment step counter
                 self.stats.steps += 1
 
                 # Fast Adaptation
                 for step in range(self.adaptation_steps):
                     train_error= self.compute_loss(
-                        train_task, learner)
+                        train_subsets[x], learner)
                     learner.adapt(train_error,allow_nograd=True,allow_unused=True)
 
                 # decay lr
@@ -504,7 +508,7 @@ class TrainManager:
                 print("Validation......")       
                 # # Compute validation loss
                 valid_loss = self.compute_loss(
-                    valid_task, learner)
+                    valid_subsets[x], learner)
                 print("Valid loss", valid_loss)
                 iteration_error += valid_loss
 
