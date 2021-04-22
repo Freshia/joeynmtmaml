@@ -39,6 +39,7 @@ from joeynmt.data import load_data, make_data_iter
 from joeynmt.builders import build_optimizer, build_scheduler, \
     build_gradient_clipper
 from joeynmt.prediction import test
+from joeynmt.vocabulary import build_vocab, Vocabulary
 
 # for fp16 training
 try:
@@ -230,9 +231,6 @@ class TrainManager:
         if self.n_gpu > 1:
             self.model = _DataParallel(self.model)
 
-
-    #maintain this as final checkpoint from maml 
-    #will be used as starting point for normal training
     def _save_checkpoint(
         self, new_best: bool = True) -> None:
         """
@@ -410,7 +408,7 @@ class TrainManager:
         print(loss)
         return loss
 
-    def maml_train_and_validate(self, train_data: Dataset, valid_data: Dataset):
+    def maml_train_and_validate(self, train_tasks, valid_tasks):
         """
         Train the model (fast adaptation) and validate it.
 
@@ -464,17 +462,7 @@ class TrainManager:
 
         # add normalization???
 
-        # self.train_iter = make_data_iter(train_data,
-        #                                  batch_size=self.batch_size,
-        #                                  batch_type=self.batch_type,
-        #                                  train=True,
-        #                                  shuffle=self.shuffle)
-
-        # if self.train_iter_state is not None:
-        #     self.train_iter.load_state_dict(self.train_iter_state)
-        train_subsets = self.sample_task(train_data,9)
-        valid_subsets = self.sample_task(valid_data,9)
-        length = len(train_subsets)
+        
 
         for iteration in range(self.iterations):
             logger.info("Iteration %d", iteration + 1)
@@ -486,16 +474,19 @@ class TrainManager:
 
             iteration_error = 0.0
             #total_valid_duration = 0
+            length = len(train_tasks)
             for x in range(length):
                 learner = self.meta_model.clone()
                 learner.train()
                 # increment step counter
                 self.stats.steps += 1
 
+                train_task = train_tasks[x]
+                valid_task = valid_tasks[x]
                 # Fast Adaptation
                 for step in range(self.adaptation_steps):
                     train_error= self.compute_loss(
-                        train_subsets[x], learner)
+                        train_task, learner)
                     learner.adapt(train_error,allow_nograd=True,allow_unused=True)
 
                 # decay lr
@@ -508,7 +499,7 @@ class TrainManager:
                 print("Validation......")       
                 # # Compute validation loss
                 valid_loss = self.compute_loss(
-                    valid_subsets[x], learner)
+                    valid_task, learner)
                 print("Valid loss", valid_loss)
                 iteration_error += valid_loss
 
@@ -813,11 +804,47 @@ def train(cfg_file: str) -> None:
     set_seed(seed=cfg["training"].get("random_seed", 42))
 
     # load the data
-    train_data, dev_data, test_data, src_vocab, trg_vocab = load_data(
-        data_cfg=cfg["data"])
+    train_tasks_list = []
+    valid_tasks_list = []
+    src_tasks = cfg["data"].get("src")
+    trg_tasks = cfg["data"].get("trg")
+
+    for x in range (len(src_tasks)):
+        src_lang = src_tasks[x]
+        trg_lang = trg_tasks[x]
+        train_data, dev_data, _, _, _ = load_data(
+        data_cfg=cfg["data"],src_lang=src_lang,trg_lang=trg_lang)
+        train_tasks_list.append(train_data)
+        valid_tasks_list.append(dev_data)
+
+    # train_data, dev_data, test_data, src_vocab, trg_vocab = load_data(
+    #     data_cfg=cfg["data"])
+
+    # train_subsets = self.sample_task(train_data,9)
+    # valid_subsets = self.sample_task(valid_data,9)
+
+    #build vocabulary
+
+    logger.info("Building vocabulary...")
+
+    src_max_size = cfg["data"].get("src_voc_limit", sys.maxsize)
+    src_min_freq = cfg["data"].get("src_voc_min_freq", 1)
+    trg_max_size = cfg["data"].get("trg_voc_limit", sys.maxsize)
+    trg_min_freq = cfg["data"].get("trg_voc_min_freq", 1)
+
+    src_vocab_file = cfg["data"].get("src_vocab", None)
+    trg_vocab_file = cfg["data"].get("trg_vocab", None)
+
+    src_vocab = build_vocab(field="src", min_freq=src_min_freq,
+                            max_size=src_max_size,
+                            dataset=train_tasks_list[0], vocab_file=src_vocab_file)
+    trg_vocab = build_vocab(field="trg", min_freq=trg_min_freq,
+                            max_size=trg_max_size,
+                            dataset=train_tasks_list[0], vocab_file=trg_vocab_file)
 
     # build an encoder-decoder model
-    model = build_model(cfg["model"], src_vocab=src_vocab, trg_vocab=trg_vocab)
+    #model = build_model(cfg["model"], src_vocab=src_vocab, trg_vocab=trg_vocab)
+    model = build_model(cfg["model"], src_vocab = src_vocab, trg_vocab=trg_vocab)
 
     # for training management, e.g. early stopping and model selection
     trainer = TrainManager(model=model, config=cfg)
@@ -828,11 +855,11 @@ def train(cfg_file: str) -> None:
     # log all entries of config
     log_cfg(cfg)
 
-    log_data_info(train_data=train_data,
-                  valid_data=dev_data,
-                  test_data=test_data,
-                  src_vocab=src_vocab,
-                  trg_vocab=trg_vocab)
+    # log_data_info(train_data=train_data,
+    #               valid_data=dev_data,
+    #               test_data=test_data,
+    #               src_vocab=src_vocab,
+    #               trg_vocab=trg_vocab)
 
     logger.info(str(model))
 
@@ -844,23 +871,26 @@ def train(cfg_file: str) -> None:
 
 
     # train the model
-    trainer.maml_train_and_validate(train_data=train_data, valid_data=dev_data)
+    # trainer.maml_train_and_validate(train_data=train_data, valid_data=dev_data)
+    trainer.maml_train_and_validate(train_tasks=train_tasks_list, valid_tasks=valid_tasks_list)
+
+
 
     # predict with the best model on validation and test
     # (if test data is available)
     ckpt = "{}/{}.ckpt".format(model_dir, trainer.stats.best_ckpt_iter)
     output_name = "{:08d}.hyps".format(trainer.stats.best_ckpt_iter)
     output_path = os.path.join(model_dir, output_name)
-    datasets_to_test = {
-        "dev": dev_data,
-        "test": test_data,
-        "src_vocab": src_vocab,
-        "trg_vocab": trg_vocab
-    }
-    test(cfg_file,
-         ckpt=ckpt,
-         output_path=output_path,
-         datasets=datasets_to_test)
+    # datasets_to_test = {
+    #     "dev": dev_data,
+    #     "test": test_data,
+    #     "src_vocab": src_vocab,
+    #     "trg_vocab": trg_vocab
+    # }
+    # test(cfg_file,
+    #      ckpt=ckpt,
+    #      output_path=output_path,
+    #      datasets=datasets_to_test)
 
 
 if __name__ == "__main__":
