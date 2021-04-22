@@ -24,14 +24,14 @@ def sample_to_str(sample):
     return " ".join(map(str, sample))
 
 
-def save_samples(samples, prefix="train", ext="src", encrypt=False):
+def save_samples(samples, prefix="train", ext="cs", encrypt=False):
     with open(prefix + "." + ext, mode="w") as f:
         for sample in samples:
             sample = encrypt_text(sample) if encrypt else sample
             f.write(sample_to_str(sample) + "\n")
 
 
-def generate_task(train="train", dev="dev", test="test", src="src", trg="trg"):
+def generate_task(train="train", dev="dev", test="test", src="cs", trg="tcs"):
 
     # train
     samples = generate_samples(50000, maxlen=25)

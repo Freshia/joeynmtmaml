@@ -23,14 +23,14 @@ def add(sample):
         result.append(modified)
     return result
 
-def save_samples(samples, prefix="train", ext="src", modify=False):
+def save_samples(samples, prefix="train", ext="ad", modify=False):
     with open(prefix + "." + ext, mode="w") as f:
         for sample in samples:
             sample = add(sample) if modify else sample
             f.write(sample_to_str(sample) + "\n")
 
 
-def generate_task(train="train", dev="dev", test="test", src="src", trg="trg"):
+def generate_task(train="train", dev="dev", test="test", src="ad", trg="tad"):
 
     # train
     samples = generate_samples(50000, high=50, maxlen=25)

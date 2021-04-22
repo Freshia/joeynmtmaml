@@ -21,8 +21,8 @@ def sample_to_str(sample):
 
 
 def save_samples(samples,
-                 output_dir="copy_task",
-                 prefix="train", ext="src", reverse=False):
+                 output_dir=".",
+                 prefix="train", ext="cp", reverse=False):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     with open(os.path.join(output_dir, prefix + "." + ext), mode="w") as f:
@@ -31,7 +31,7 @@ def save_samples(samples,
             f.write(sample_to_str(sample) + "\n")
 
 
-def generate_task(train="train", dev="dev", test="test", src="src", trg="trg"):
+def generate_task(train="train", dev="dev", test="test", src="cp", trg="tcp"):
 
     # train
     samples = generate_samples(10000, high=26, maxlen=20)
