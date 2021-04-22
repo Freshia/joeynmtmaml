@@ -19,7 +19,7 @@ from joeynmt.vocabulary import build_vocab, Vocabulary
 logger = logging.getLogger(__name__)
 
 
-def load_data(data_cfg: dict, datasets: list = None)\
+def load_data(data_cfg: dict, src_lang,trg_lang, datasets: list = None)\
         -> (Dataset, Dataset, Optional[Dataset], Vocabulary, Vocabulary):
     """
     Load train, dev and optionally test data as specified in configuration.
@@ -47,8 +47,10 @@ def load_data(data_cfg: dict, datasets: list = None)\
         datasets = ["train", "dev", "test"]
 
     # load data from files
-    src_lang = data_cfg["src"]
-    trg_lang = data_cfg["trg"]
+    # src_lang = data_cfg["src"]
+    # trg_lang = data_cfg["trg"]
+
+
     train_path = data_cfg.get("train", None)
     dev_path = data_cfg.get("dev", None)
     test_path = data_cfg.get("test", None)
