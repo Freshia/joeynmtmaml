@@ -844,7 +844,7 @@ def train(cfg_file: str) -> None:
 
     # build an encoder-decoder model
     #model = build_model(cfg["model"], src_vocab=src_vocab, trg_vocab=trg_vocab)
-    model = build_model(cfg["model"], src_vocab = src_vocab, trg_vocab=trg_vocab)
+    model = build_model(cfg["model"], src_vocab = src_vocab, trg_vocab=src_vocab)
 
     # for training management, e.g. early stopping and model selection
     trainer = TrainManager(model=model, config=cfg)
