@@ -516,7 +516,7 @@ class TrainManager:
                             self.learning_rate_min)
                 break
 
-            iteration_error /= self.tasks_per_step
+            iteration_error /= length
 
             # logger.info('Iteration: %d: Loss : {:.3f} Acc : {:.3f}', 
             #     (iteration+1),iteration_error, iteration_acc)
