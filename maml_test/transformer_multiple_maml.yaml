@@ -30,6 +30,8 @@ training:
     label_smoothing: 0.0
     weight_decay: 0.0
     batch_size: 100
+    eval_batch_size: 100        #for validation on common file
+    valid_batch_size: 100       #for validation per task
     batch_type: "token"
     epochs: 30
     iterations: 30
