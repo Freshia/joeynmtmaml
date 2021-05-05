@@ -388,7 +388,7 @@ class TrainManager:
             number=number/3
 
         return train_subsets
-    def compute_loss(self,train_task,learner):
+    def compute_task_loss(self,train_task,learner):
         loss = 0.0
         task_train_iter = make_data_iter(train_task,
                                          batch_size=self.batch_size,
@@ -400,11 +400,8 @@ class TrainManager:
                                       use_cuda=self.use_cuda)                    
             batch_loss, _, _, _ = learner(return_type="loss", **vars(train_batch))
             loss += batch_loss
-            print("Batch loss")
-            print(batch_loss)
         loss /= len(train_task)
-        print("Loss")
-        print(loss)
+        print("Task Loss",loss)
         return loss
 
     def fast_adapt(self,task, learner, valid=False):
@@ -799,9 +796,6 @@ def train(cfg_file: str) -> None:
     # train_data, dev_data, test_data, src_vocab, trg_vocab = load_data(
     #     data_cfg=cfg["data"])
 
-    # train_subsets = self.sample_task(train_data,9)
-    # valid_subsets = self.sample_task(valid_data,9)
-
     #build vocabulary
 
     logger.info("Building vocabulary...")
@@ -822,7 +816,6 @@ def train(cfg_file: str) -> None:
                             dataset=train_tasks_list[0], vocab_file=trg_vocab_file)
 
     # build an encoder-decoder model
-    #model = build_model(cfg["model"], src_vocab=src_vocab, trg_vocab=trg_vocab)
     model = build_model(cfg["model"], src_vocab = src_vocab, trg_vocab=src_vocab)
 
     # for training management, e.g. early stopping and model selection
@@ -852,8 +845,6 @@ def train(cfg_file: str) -> None:
     # train the model
     # trainer.maml_train_and_validate(train_data=train_data, valid_data=dev_data)
     trainer.maml_train_and_validate(train_tasks=train_tasks_list, valid_tasks=valid_tasks_list)
-
-
 
     # predict with the best model on validation and test
     # (if test data is available)
