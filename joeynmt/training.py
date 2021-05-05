@@ -180,6 +180,8 @@ class TrainManager:
         self.batch_type = train_config.get("batch_type", "sentence")
         self.eval_batch_size = train_config.get("eval_batch_size",
                                                 self.batch_size)
+        self.valid_batch_size = train_config.get("valid_batch_size",
+                                                self.batch_size)
         # per-device eval_batch_size = self.eval_batch_size // self.n_gpu
         self.eval_batch_type = train_config.get("eval_batch_type",
                                                 self.batch_type)
@@ -387,9 +389,6 @@ class TrainManager:
 
         return train_subsets
     def compute_loss(self,train_task,learner):
-
-        # x,y = batch.src,batch.trg
-        # x, y = x.to(self.device), y.to(self.device)
         loss = 0.0
         task_train_iter = make_data_iter(train_task,
                                          batch_size=self.batch_size,
@@ -404,6 +403,35 @@ class TrainManager:
             print("Batch loss")
             print(batch_loss)
         loss /= len(train_task)
+        print("Loss")
+        print(loss)
+        return loss
+
+    def fast_adapt(self,task, learner, valid=False):
+        loss = 0.0
+        batch_size = self.batch_size
+        steps = self.adaptation_steps
+        if valid:
+            batch_size = self.valid_batch_size
+            steps = 1 # Take only one batch during validation
+
+        task_iter = make_data_iter(task,
+                                         batch_size=batch_size,
+                                         batch_type=self.batch_type,
+                                         train=True,
+                                         shuffle=self.shuffle)
+        for i in range(steps):
+            batch = next(iter(task_iter))
+            train_batch = self.batch_class(batch, self.model.pad_index,
+                                      use_cuda=self.use_cuda)                    
+            batch_loss, _, _, _ = learner(return_type="loss", **vars(train_batch))
+
+            learner.adapt(batch_loss,allow_nograd=True,allow_unused=True) # Adapt learner after every batch
+            loss += batch_loss
+
+        loss /= (len(task)*steps)
+        #adapt after every task
+        #learner.adapt(loss,allow_nograd=True,allow_unused=True)
         print("Loss")
         print(loss)
         return loss
@@ -484,28 +512,27 @@ class TrainManager:
                 train_task = train_tasks[x]
                 valid_task = valid_tasks[x]
                 # Fast Adaptation
-                for step in range(self.adaptation_steps):
-                    train_error= self.compute_loss(
-                        train_task, learner)
-                    learner.adapt(train_error,allow_nograd=True,allow_unused=True)
-
+                # for step in range(self.adaptation_steps):
+                #     train_error= self.compute_loss(
+                #         train_task, learner)
+                #     learner.adapt(train_error,allow_nograd=True,allow_unused=True)
+                train_loss = self.fast_adapt(train_task,learner,valid=False)
                 # decay lr
                 if self.scheduler is not None \
                             and self.scheduler_step_at == "step":
                         self.scheduler.step()
 
                 valid_loss = 0.0
-
-                print("Validation......")       
                 # # Compute validation loss
-                valid_loss = self.compute_loss(
-                    valid_task, learner)
+                # valid_loss = self.compute_loss(
+                #     valid_task, learner)
+                valid_loss = self.fast_adapt(valid_task,learner,valid=True)
                 print("Valid loss", valid_loss)
                 iteration_error += valid_loss
 
-                # validate on the entire dev set
+                #validate on the entire dev set
                 # if self.stats.steps % self.validation_freq == 0:
-                #     valid_loss, valid_duration = self._validate(valid_data, iteration, learner)
+                #     valid_loss, valid_duration = self._validate(valid_task, iteration, learner)
                 #     total_valid_duration += valid_duration
 
                 #Early stopping
@@ -525,54 +552,6 @@ class TrainManager:
             self.optimizer.zero_grad()
             iteration_error.backward()
             self.optimizer.step()
-
-    def _train_step(self, batch: Batch) -> Tensor:
-        """
-        Train the model on one batch: Compute the loss.
-
-        :param batch: training batch
-        :return: loss for batch (sum)
-        """
-        # reactivate training
-        self.model.train()
-
-        # get loss
-        batch_loss, _, _, _ = self.model(return_type="loss", **vars(batch))
-
-        # sum multi-gpu losses
-        if self.n_gpu > 1:
-            batch_loss = batch_loss.sum()
-
-        # normalize batch loss
-        if self.normalization == "batch":
-            normalizer = batch.nseqs
-        elif self.normalization == "tokens":
-            normalizer = batch.ntokens
-        elif self.normalization == "none":
-            normalizer = 1
-        else:
-            raise NotImplementedError("Only normalize by 'batch' or 'tokens' "
-                                      "or summation of loss 'none' implemented")
-
-        norm_batch_loss = batch_loss / normalizer
-
-        if self.n_gpu > 1:
-            norm_batch_loss = norm_batch_loss / self.n_gpu
-
-        if self.batch_multiplier > 1:
-            norm_batch_loss = norm_batch_loss / self.batch_multiplier
-
-        # accumulate gradients
-        if self.fp16:
-            with amp.scale_loss(norm_batch_loss, self.optimizer) as scaled_loss:
-                scaled_loss.backward()
-        else:
-            norm_batch_loss.backward()
-
-        # increment token counter
-        self.stats.total_tokens += batch.ntokens
-
-        return norm_batch_loss.item()
 
     def _validate(self, valid_data, epoch_no, model):
         valid_start_time = time.time()
