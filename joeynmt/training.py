@@ -426,7 +426,7 @@ class TrainManager:
             learner.adapt(batch_loss,allow_nograd=True,allow_unused=True) # Adapt learner after every batch
             loss += batch_loss
 
-        loss /= (len(task)*steps)
+        loss /= (batch_size*steps)
         #adapt after every task
         #learner.adapt(loss,allow_nograd=True,allow_unused=True)
         print("Loss")
