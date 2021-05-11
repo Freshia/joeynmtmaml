@@ -40,7 +40,7 @@ training:
     logging_freq: 100
     eval_metric: "bleu"
     model_dir: "models/transformer_multiple_valid_maml"
-    overwrite: False
+    overwrite: True
     shuffle: True
     use_cuda: False
     max_output_length: 30
