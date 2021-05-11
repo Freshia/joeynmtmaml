@@ -29,16 +29,17 @@ training:
     maml_lr: 0.01
     label_smoothing: 0.0
     weight_decay: 0.0
-    batch_size: 100
+    batch_size: 5000
     batch_type: "token"
     epochs: 5
+    iterations: 30
     tasks: 50
     task_size: 1000
     adaptation_steps: 5
-    validation_freq: 1000
+    validation_freq: 5
     logging_freq: 100
     eval_metric: "bleu"
-    model_dir: "models/transformer_reverse_maml"
+    model_dir: "models/transformer_multiple_valid_maml"
     overwrite: False
     shuffle: True
     use_cuda: False
