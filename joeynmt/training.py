@@ -41,6 +41,8 @@ from joeynmt.builders import build_optimizer, build_scheduler, \
 from joeynmt.prediction import test
 from joeynmt.vocabulary import build_vocab, Vocabulary
 
+from joeynmt.training_norm import train_norm
+
 # for fp16 training
 try:
     from apex import amp
@@ -185,6 +187,8 @@ class TrainManager:
         # per-device eval_batch_size = self.eval_batch_size // self.n_gpu
         self.eval_batch_type = train_config.get("eval_batch_type",
                                                 self.batch_type)
+
+        self.valid_config = train_config.get("valid_config")
 
         self.batch_multiplier = train_config.get("batch_multiplier", 1)
 
@@ -542,14 +546,15 @@ class TrainManager:
 
             iteration_error /= length
 
-            # logger.info('Iteration: %d: Loss : {:.3f} Acc : {:.3f}', 
-            #     (iteration+1),iteration_error, iteration_acc)
-
+            if iteration % self.validation_freq ==0:
+                self.validate_maml(self.meta_model, self.valid_config)
             #Meta Learning Step
             self.optimizer.zero_grad()
             iteration_error.backward()
             self.optimizer.step()
 
+    def validate_maml(self, model, cfg_file):
+        train_norm(model,cfg_file, skip_test=True)
     def _validate(self, valid_data, epoch_no, model):
         valid_start_time = time.time()
 
