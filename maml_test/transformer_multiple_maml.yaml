@@ -35,8 +35,6 @@ training:
     batch_type: "token"
     epochs: 30
     iterations: 30
-    tasks: 50
-    task_size: 1000
     adaptation_steps: 5
     validation_freq: 5
     valid_config: "joeynmtmaml/maml_test/transformer_multiple_valid.yaml"

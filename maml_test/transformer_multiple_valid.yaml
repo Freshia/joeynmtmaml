@@ -33,8 +33,6 @@ training:
     batch_type: "token"
     epochs: 5
     iterations: 30
-    tasks: 50
-    task_size: 1000
     adaptation_steps: 5
     validation_freq: 5
     logging_freq: 100
