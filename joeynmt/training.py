@@ -168,9 +168,6 @@ class TrainManager:
         self.batch_size = train_config["batch_size"]
 
         self.iterations = train_config["iterations"]
-        self.tasks = train_config["tasks"]
-
-        self.task_size= train_config["task_size"]
         self.adaptation_steps = train_config["adaptation_steps"]
 
 
@@ -374,24 +371,7 @@ class TrainManager:
         if self.fp16 and model_checkpoint.get("amp_state", None) is not None:
             amp.load_state_dict(model_checkpoint['amp_state'])
 
-    # pylint: disable=unnecessary-comprehension
-    # pylint: disable=too-many-branches
-    # pylint: disable=too-many-statements
-    def sample_task(self, dataset, number):
-        split_val = 1.0/3
-        tasks_ratio = [split_val]*3
-        train_subsets = []
-        train_subsets.append(dataset)
-        while number>1:
-            subs = train_subsets
-            train_subsets = []
-            length = len(subs)
-            for x in range (length):
-                data = subs[x]
-                train_subsets.extend(data.split(split_ratio = tasks_ratio))
-            number=number/3
 
-        return train_subsets
     def compute_task_loss(self,train_task,learner):
         loss = 0.0
         task_train_iter = make_data_iter(train_task,
@@ -491,8 +471,6 @@ class TrainManager:
 
         # add normalization???
 
-        
-
         for iteration in range(self.iterations):
             logger.info("Iteration %d", iteration + 1)
 
@@ -525,16 +503,9 @@ class TrainManager:
 
                 valid_loss = 0.0
                 # # Compute validation loss
-                # valid_loss = self.compute_loss(
-                #     valid_task, learner)
                 valid_loss = self.fast_adapt(valid_task,learner,valid=True)
                 print("Valid loss", valid_loss)
                 iteration_error += valid_loss
-
-                #validate on the entire dev set
-                # if self.stats.steps % self.validation_freq == 0:
-                #     valid_loss, valid_duration = self._validate(valid_task, iteration, learner)
-                #     total_valid_duration += valid_duration
 
                 #Early stopping
                 if self.stats.stop:
@@ -546,8 +517,10 @@ class TrainManager:
 
             iteration_error /= length
 
+            #Maml validation
             if iteration % self.validation_freq ==0:
                 self.validate_maml(self.meta_model, self.valid_config)
+            
             #Meta Learning Step
             self.optimizer.zero_grad()
             iteration_error.backward()
@@ -555,6 +528,7 @@ class TrainManager:
 
     def validate_maml(self, model, cfg_file):
         train_norm(model,cfg_file, skip_test=True)
+
     def _validate(self, valid_data, epoch_no, model):
         valid_start_time = time.time()
 
@@ -798,9 +772,6 @@ def train(cfg_file: str) -> None:
         train_tasks_list.append(train_data)
         valid_tasks_list.append(dev_data)
 
-    # train_data, dev_data, test_data, src_vocab, trg_vocab = load_data(
-    #     data_cfg=cfg["data"])
-
     #build vocabulary
 
     logger.info("Building vocabulary...")
@@ -848,7 +819,6 @@ def train(cfg_file: str) -> None:
 
 
     # train the model
-    # trainer.maml_train_and_validate(train_data=train_data, valid_data=dev_data)
     trainer.maml_train_and_validate(train_tasks=train_tasks_list, valid_tasks=valid_tasks_list)
 
     # predict with the best model on validation and test
