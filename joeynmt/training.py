@@ -518,8 +518,9 @@ class TrainManager:
             iteration_error /= length
 
             #Maml validation
+            val_model = copy.deepcopy(self.meta_model)
             if iteration % self.validation_freq ==0:
-                self.validate_maml(self.meta_model, self.valid_config)
+                self.validate_maml(val_model, self.valid_config)
             
             #Meta Learning Step
             self.optimizer.zero_grad()
