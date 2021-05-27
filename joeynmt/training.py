@@ -42,6 +42,7 @@ from joeynmt.prediction import test
 from joeynmt.vocabulary import build_vocab, Vocabulary
 
 from joeynmt.training_norm import train_norm
+import copy
 
 # for fp16 training
 try:
