@@ -11,7 +11,7 @@ def generate_samples(n=10000, low=0, high=10, maxlen=10):
     for i in range(n):
         size = np.random.randint(1, maxlen + 1)
         sample = np.random.randint(low, high, size)
-        sample = [chr(ord('a') + x) for x in sample]
+        #sample = [chr(ord('a') + x) for x in sample]
         samples.append(sample)
     return samples
 
